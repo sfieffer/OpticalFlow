@@ -13,6 +13,5 @@ venv/
 .idea/
 
 # Ignore inputs
-input_videos/
-*.mp4
-*.MP4
+input_videos/*
+!input_videos/.keep
