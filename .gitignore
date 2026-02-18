@@ -1,0 +1,18 @@
+# Ignore dataset
+kitti_flow_2015/
+
+# Ignore Python artifacts
+__pycache__/
+*.pyc
+
+# Ignore virtual environment
+venv/
+.env/
+
+# Ignore IDE settings
+.idea/
+
+# Ignore inputs
+input_videos/
+*.mp4
+*.MP4
