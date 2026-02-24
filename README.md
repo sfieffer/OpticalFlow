@@ -13,7 +13,9 @@ frame_idx - frame number of the sample
 
 dt_frames - how many frames have passed since the last sample
 
-mean_mag - average motion magnitude across the entire image
+mean_mag - average motion magnitude across the entire image (how much the average pixel moves)
+
+sum_mag - total motion across the entire frame 
 
 median_mag - median value of motion magnitude across the entire image
 
@@ -26,3 +28,9 @@ mean_u - Average horizontal motion (positive = rightward, negative = leftward)
 mean_v - Average vertical motion (positive = downward, negative = upward)
 
 All magnitude values are in pixels/frame units across the sampling time gap defined. If the framerate of the video is 60FPS and is sampled at 4Hz, the sampling will occur every 15 frames.
+
+
+## Video explaining how Farneback works
+Specifically, the opencv2 calcopticalFlowFarneback() function.
+
+https://www.youtube.com/watch?v=g_5K7B_5WLw

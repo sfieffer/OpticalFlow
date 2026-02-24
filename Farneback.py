@@ -6,7 +6,7 @@ import numpy as np
 
 # USER SETTINGS (DIRECT THIS TO YOUR VIDEO!)
 VIDEO_FOLDER = "input_videos"
-VIDEO_NAME = "DJI_0012.mp4"
+VIDEO_NAME = "TrimP148_ConditionCenter_varjo_capture.mp4"
 VIDEO_PATH = f"{VIDEO_FOLDER}/{VIDEO_NAME}"
 VIDEO_NAME = os.path.splitext(os.path.basename(VIDEO_PATH))[0]
 OUTPUT_CSV = f"Output/{VIDEO_NAME}_flow_timeseries.csv"
@@ -64,6 +64,7 @@ def flow_stats(flow):
     mag, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
     return {
         "mean_mag": float(np.mean(mag)),
+        "sum_mag": float(np.sum(mag)),
         "median_mag": float(np.median(mag)),
         "p90_mag": float(np.percentile(mag, 90)),
         "max_mag": float(np.max(mag)),
@@ -143,8 +144,12 @@ def main():
         raise RuntimeError(f"Could not open video: {VIDEO_PATH}")
 
     native_fps = cap.get(cv2.CAP_PROP_FPS)
+    orig_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    orig_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
     step_frames = max(1, int(round(native_fps / SAMPLE_FPS)))
 
+    print(f"Original resolution: {orig_width} x {orig_height}")
     print(f"Video FPS: {native_fps:.2f}")
     print(f"Sampling every {step_frames} frames (~{SAMPLE_FPS} Hz)")
 
@@ -153,22 +158,43 @@ def main():
         raise RuntimeError("Could not read first frame")
 
     prev_gray = resize_if_needed(to_gray_u8(frame))
+    resized_height, resized_width = prev_gray.shape
+
+    print(f"Resized resolution: {resized_width} x {resized_height}")
+    print(f"Due to resizing, all magnitudes reduced by a factor of {orig_width/RESIZE_WIDTH}.")
+
     prev_frame_idx = 0
 
-    writer = None
     viz_writer = None
 
     if OUTPUT_VIZ:
-        h, w = prev_gray.shape
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         viz_writer = cv2.VideoWriter(
             OUTPUT_VIZ,
             fourcc,
             SAMPLE_FPS,
-            (w, h)
+            (resized_width, resized_height)
         )
 
     with open(OUTPUT_CSV, "w", newline="") as f:
+
+        # --------- METADATA HEADER ----------
+        f.write("# Optical Flow Metadata\n")
+        f.write(f"# video_name: {VIDEO_NAME}\n")
+        f.write(f"# original_resolution: {orig_width}x{orig_height}\n")
+        f.write(f"# resized_resolution: {resized_width}x{resized_height}\n")
+        f.write(f"# native_fps: {native_fps}\n")
+        f.write(f"# sample_fps: {SAMPLE_FPS}\n")
+        f.write(f"# step_frames: {step_frames}\n")
+        f.write(f"# pyr_scale: {PYR_SCALE}\n")
+        f.write(f"# levels: {LEVELS}\n")
+        f.write(f"# winsize: {WINSIZE}\n")
+        f.write(f"# iterations: {ITERATIONS}\n")
+        f.write(f"# poly_n: {POLY_N}\n")
+        f.write(f"# poly_sigma: {POLY_SIGMA}\n")
+        f.write(f"# gaussian_flag: {USE_GAUSSIAN}\n")
+        f.write("# -----------------------------------\n\n")
+
         writer = csv.DictWriter(
             f,
             fieldnames=[
@@ -176,6 +202,7 @@ def main():
                 "frame_idx",
                 "dt_frames",
                 "mean_mag",
+                "sum_mag",
                 "median_mag",
                 "p90_mag",
                 "max_mag",
@@ -236,7 +263,6 @@ def main():
     print(f"Wrote: {OUTPUT_CSV}")
     if OUTPUT_VIZ:
         print(f"Wrote: {OUTPUT_VIZ}")
-
 
 if __name__ == "__main__":
     if RUN_SELF_TEST:
