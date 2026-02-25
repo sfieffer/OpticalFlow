@@ -6,7 +6,7 @@ import numpy as np
 
 # USER SETTINGS (DIRECT THIS TO YOUR VIDEO!)
 VIDEO_FOLDER = "input_videos"
-VIDEO_NAME = "TrimP148_ConditionCenter_varjo_capture.mp4"
+VIDEO_NAME = "AreaX_Cropped.mp4"
 VIDEO_PATH = f"{VIDEO_FOLDER}/{VIDEO_NAME}"
 VIDEO_NAME = os.path.splitext(os.path.basename(VIDEO_PATH))[0]
 OUTPUT_CSV = f"Output/{VIDEO_NAME}_flow_timeseries.csv"

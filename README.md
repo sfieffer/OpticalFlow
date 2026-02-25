@@ -30,6 +30,9 @@ mean_v - Average vertical motion (positive = downward, negative = upward)
 All magnitude values are in pixels/frame units across the sampling time gap defined. If the framerate of the video is 60FPS and is sampled at 4Hz, the sampling will occur every 15 frames.
 
 
+## Originally inspired by:
+Cantory et al., 2025 paper: https://doi.org/10.1145/3756884.3766046
+
 ## Video explaining how Farneback works
 Specifically, the opencv2 calcopticalFlowFarneback() function.
 
