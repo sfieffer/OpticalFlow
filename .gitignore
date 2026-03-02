@@ -17,3 +17,5 @@ input_videos/*
 !input_videos/.keep
 cropped_videos/*
 !cropped_videos/.keep
+Output/*
+!Output/.keep
