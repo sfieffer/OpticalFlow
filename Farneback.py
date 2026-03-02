@@ -5,8 +5,9 @@ import numpy as np
 
 
 # USER SETTINGS (DIRECT THIS TO YOUR VIDEO!)
-VIDEO_FOLDER = "input_videos"
-VIDEO_NAME = "AreaX_Cropped.mp4"
+# VIDEO_FOLDER = "input_videos"
+VIDEO_FOLDER = "cropped_videos"
+VIDEO_NAME = "P1_Center_cropped.avi"
 VIDEO_PATH = f"{VIDEO_FOLDER}/{VIDEO_NAME}"
 VIDEO_NAME = os.path.splitext(os.path.basename(VIDEO_PATH))[0]
 OUTPUT_CSV = f"Output/{VIDEO_NAME}_flow_timeseries.csv"
@@ -149,6 +150,9 @@ def main():
 
     step_frames = max(1, int(round(native_fps / SAMPLE_FPS)))
 
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    print(f"Total frames reported: {total_frames}")
+
     print(f"Original resolution: {orig_width} x {orig_height}")
     print(f"Video FPS: {native_fps:.2f}")
     print(f"Sampling every {step_frames} frames (~{SAMPLE_FPS} Hz)")
@@ -213,6 +217,7 @@ def main():
         writer.writeheader()
 
         frame_idx = 0
+        last_print_pct = -1
 
         while True:
             for _ in range(step_frames):
@@ -220,6 +225,13 @@ def main():
                 frame_idx += 1
                 if not ok:
                     break
+
+            # Progress (percent of original frames)
+            if total_frames > 0:
+                pct = int((frame_idx / total_frames) * 100)
+                if pct != last_print_pct and (pct % 5 == 0):  # prints at 0,5,10,...,100
+                    print(f"Progress: {pct}% ({frame_idx}/{total_frames} frames)")
+                    last_print_pct = pct
 
             ok, frame = cap.retrieve()
             if not ok:
