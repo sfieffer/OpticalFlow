@@ -7,13 +7,14 @@ import numpy as np
 # USER SETTINGS (DIRECT THIS TO YOUR VIDEO!)
 # VIDEO_FOLDER = "input_videos"
 VIDEO_FOLDER = "cropped_videos"
-VIDEO_NAME = "P1_Center_cropped.avi"
+VIDEO_NAME = "left_eye.avi"
 VIDEO_PATH = f"{VIDEO_FOLDER}/{VIDEO_NAME}"
 VIDEO_NAME = os.path.splitext(os.path.basename(VIDEO_PATH))[0]
 OUTPUT_CSV = f"Output/{VIDEO_NAME}_flow_timeseries.csv"
 OUTPUT_VIZ = f"Output/{VIDEO_NAME}_flow_visualization.mp4"
 
 SAMPLE_FPS = 4.0                   # optical flow sampling rate (Hz)
+# HORIZONTAL_FOV_DEG = 115.0         # Adjust to headset horizontal FOV - VARJO = 115
 RESIZE_WIDTH = 640                 # None = no resize
 RESIZE_HEIGHT = None               # None = keep aspect ratio
 
@@ -212,6 +213,8 @@ def main():
                 "max_mag",
                 "mean_u",
                 "mean_v",
+                "mean_mag_px_per_sec",
+                # "mean_mag_deg_per_sec",
             ]
         )
         writer.writeheader()
@@ -254,11 +257,28 @@ def main():
 
             stats = flow_stats(flow)
 
+            dt = frame_idx - prev_frame_idx
+
+            # ---- Convert to pixels/sec ----
+            mean_px_per_sec = (stats["mean_mag"] / dt) * native_fps
+
+            # ---- Convert to degrees/sec ----
+            # deg_per_pixel = HORIZONTAL_FOV_DEG / resized_width
+            # mean_deg_per_sec = mean_px_per_sec * deg_per_pixel
+
             writer.writerow({
                 "time_sec": frame_idx / native_fps,
                 "frame_idx": frame_idx,
-                "dt_frames": frame_idx - prev_frame_idx,
-                **stats
+                "dt_frames": dt,
+                "mean_mag": stats["mean_mag"],
+                "sum_mag": stats["sum_mag"],
+                "median_mag": stats["median_mag"],
+                "p90_mag": stats["p90_mag"],
+                "max_mag": stats["max_mag"],
+                "mean_u": stats["mean_u"],
+                "mean_v": stats["mean_v"],
+                "mean_mag_px_per_sec": mean_px_per_sec,
+                # "mean_mag_deg_per_sec": mean_deg_per_sec,
             })
 
             if viz_writer:
