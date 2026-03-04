@@ -19,3 +19,4 @@ cropped_videos/*
 !cropped_videos/.keep
 Output/*
 !Output/.keep
+!Output/Chair_timeseries

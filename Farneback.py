@@ -7,7 +7,7 @@ import numpy as np
 # USER SETTINGS (DIRECT THIS TO YOUR VIDEO!)
 # VIDEO_FOLDER = "input_videos"
 VIDEO_FOLDER = "cropped_videos"
-VIDEO_NAME = "left_eye.avi"
+VIDEO_NAME = "P1_Center_cropped.avi"
 VIDEO_PATH = f"{VIDEO_FOLDER}/{VIDEO_NAME}"
 VIDEO_NAME = os.path.splitext(os.path.basename(VIDEO_PATH))[0]
 OUTPUT_CSV = f"Output/{VIDEO_NAME}_flow_timeseries.csv"

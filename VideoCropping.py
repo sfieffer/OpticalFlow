@@ -4,7 +4,7 @@ import cv2
 import os
 import numpy as np
 
-input_path = "input_videos/input.mp4"
+input_path = "input_videos/P120_Center.mp4"
 output_folder = "cropped_videos"
 os.makedirs(output_folder, exist_ok=True)
 
@@ -12,7 +12,7 @@ os.makedirs(output_folder, exist_ok=True)
 base_name = os.path.basename(input_path)              # input.mp4
 name_no_ext, ext = os.path.splitext(base_name)       # ("input", ".mp4")
 
-output_filename = f"{name_no_ext}_cropped{ext}"      # input_cropped.mp4
+output_filename = f"{name_no_ext}_cropped.avi"
 output_path = os.path.join(output_folder, output_filename)
 
 print("Input file:", base_name)
