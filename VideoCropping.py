@@ -4,8 +4,8 @@ import cv2
 import os
 import numpy as np
 
-input_path = "input_videos/P120_Center.mp4"
-output_folder = "cropped_videos"
+input_path = "input_videos/uneditted/P2_Whole.mp4"
+output_folder = "cropped_videos/untrimmed"
 os.makedirs(output_folder, exist_ok=True)
 
 # --- Build output filename automatically ---
