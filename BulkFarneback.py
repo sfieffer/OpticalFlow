@@ -4,24 +4,21 @@ import cv2
 import numpy as np
 
 
-# USER SETTINGS (DIRECT THIS TO YOUR VIDEO!)
-# VIDEO_FOLDER = "input_videos"
 VIDEO_FOLDER = "cropped_videos/trimmed"
-VIDEO_NAME = "P106_Center_cropped - Trim.mp4"
-VIDEO_PATH = f"{VIDEO_FOLDER}/{VIDEO_NAME}"
-VIDEO_NAME = os.path.splitext(os.path.basename(VIDEO_PATH))[0]
-OUTPUT_CSV = f"Output/{VIDEO_NAME}_flow_timeseries.csv"
-OUTPUT_VIZ = f"Output/{VIDEO_NAME}_flow_visualization.mp4"
+OUTPUT_FOLDER = "Output/bulk"
 
-SAMPLE_FPS = 4.0                   # optical flow sampling rate (Hz)
-# HORIZONTAL_FOV_DEG = 115.0         # Adjust to headset horizontal FOV - VARJO = 115
-RESIZE_WIDTH = 640                 # None = no resize
-RESIZE_HEIGHT = None               # None = keep aspect ratio
+SAVE_VISUALIZATION = False
 
-USE_GAUSSIAN = False               # Farnebäck Gaussian window
-MAG_CLIP = None                    # e.g., 10.0 to cap visualization scale
+VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
 
-RUN_SELF_TEST = False              # Toggle the self test for code validation check
+SAMPLE_FPS = 4.0
+RESIZE_WIDTH = 640
+RESIZE_HEIGHT = None
+
+USE_GAUSSIAN = False
+MAG_CLIP = None
+
+RUN_SELF_TEST = False
 
 # FARNEBÄCK PARAMETERS
 PYR_SCALE = 0.5
@@ -33,8 +30,17 @@ POLY_SIGMA = 1.2
 FLAGS = cv2.OPTFLOW_FARNEBACK_GAUSSIAN if USE_GAUSSIAN else 0
 
 
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+if SAVE_VISUALIZATION:
+    VIZ_FOLDER = os.path.join(OUTPUT_FOLDER, "visualizations")
+    os.makedirs(VIZ_FOLDER, exist_ok=True)
+
+
+# ----------------------------
 # HELPER FUNCTIONS
+# ----------------------------
+
 def to_gray_u8(frame_bgr):
     gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
     if gray.dtype != np.uint8:
@@ -47,6 +53,7 @@ def resize_if_needed(gray):
         return gray
 
     h, w = gray.shape
+
     if RESIZE_WIDTH is None:
         scale = RESIZE_HEIGHT / h
         new_w = int(w * scale)
@@ -91,87 +98,59 @@ def flow_to_bgr(flow):
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
 
-# SELF TEST FOR VALIDATION
-def run_self_test():
-    """
-    Synthetic validation: known translation test.
-    Confirms Farnebäck behaves as expected.
-    """
-    h, w = 240, 320
-    rng = np.random.default_rng(0)
+# -------------------------------------
+# PROCESS A SINGLE VIDEO
+# -------------------------------------
 
-    # Create a textured image
-    img = (rng.random((h, w)) * 255).astype(np.uint8)
-    img = cv2.GaussianBlur(img, (9, 9), 0)
+def process_video(video_path):
 
-    # Known translation in pixels
-    dx, dy = 5, -3  # right 5 px, up 3 px
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
 
-    M = np.float32([[1, 0, dx], [0, 1, dy]])
-    shifted = cv2.warpAffine(
-        img, M, (w, h),
-        flags=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_REFLECT
-    )
+    OUTPUT_CSV = os.path.join(OUTPUT_FOLDER, f"{video_name}_flow_timeseries.csv")
 
-    flow = cv2.calcOpticalFlowFarneback(
-        img,
-        shifted,
-        None,
-        PYR_SCALE,
-        LEVELS,
-        WINSIZE,
-        ITERATIONS,
-        POLY_N,
-        POLY_SIGMA,
-        FLAGS
-    )
-
-    mean_u = np.mean(flow[..., 0])
-    mean_v = np.mean(flow[..., 1])
-
-    print("SELF TEST RESULTS")
-    print(f"Expected mean_u ≈ {dx}, mean_v ≈ {dy}")
-    print(f"Measured mean_u = {mean_u:.2f}, mean_v = {mean_v:.2f}")
-
-    if abs(mean_u - dx) > 1.5 or abs(mean_v - dy) > 1.5:
-        raise RuntimeError("Self-test failed")
+    if SAVE_VISUALIZATION:
+        OUTPUT_VIZ = os.path.join(VIZ_FOLDER, f"{video_name}_flow_visualization.mp4")
     else:
-        print("Self-test passed")
+        OUTPUT_VIZ = None
 
+    if os.path.exists(OUTPUT_CSV):
+        print("Skipping existing:", video_name)
+        return
 
-def main():
-    cap = cv2.VideoCapture(VIDEO_PATH)
+    print("\n=============================")
+    print("Processing:", video_name)
+
+    cap = cv2.VideoCapture(video_path)
+
     if not cap.isOpened():
-        raise RuntimeError(f"Could not open video: {VIDEO_PATH}")
+        print("Could not open video")
+        return
 
     native_fps = cap.get(cv2.CAP_PROP_FPS)
+    if native_fps <= 1e-6:
+        native_fps = 30.0
+
     orig_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     orig_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     step_frames = max(1, int(round(native_fps / SAMPLE_FPS)))
 
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(f"Total frames reported: {total_frames}")
-
-    print(f"Original resolution: {orig_width} x {orig_height}")
-    print(f"Video FPS: {native_fps:.2f}")
-    print(f"Sampling every {step_frames} frames (~{SAMPLE_FPS} Hz)")
+    print("Resolution:", orig_width, "x", orig_height)
+    print("FPS:", native_fps)
+    print("Frames:", total_frames)
 
     ok, frame = cap.read()
     if not ok:
-        raise RuntimeError("Could not read first frame")
+        print("Could not read first frame")
+        return
 
     prev_gray = resize_if_needed(to_gray_u8(frame))
     resized_height, resized_width = prev_gray.shape
 
-    print(f"Resized resolution: {resized_width} x {resized_height}")
-    print(f"Due to resizing, all magnitudes reduced by a factor of {orig_width/RESIZE_WIDTH}.")
-
     prev_frame_idx = 0
 
     viz_writer = None
-
     if OUTPUT_VIZ:
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         viz_writer = cv2.VideoWriter(
@@ -183,21 +162,13 @@ def main():
 
     with open(OUTPUT_CSV, "w", newline="") as f:
 
-        # --------- METADATA HEADER ----------
         f.write("# Optical Flow Metadata\n")
-        f.write(f"# video_name: {VIDEO_NAME}\n")
+        f.write(f"# video_name: {video_name}\n")
         f.write(f"# original_resolution: {orig_width}x{orig_height}\n")
         f.write(f"# resized_resolution: {resized_width}x{resized_height}\n")
         f.write(f"# native_fps: {native_fps}\n")
         f.write(f"# sample_fps: {SAMPLE_FPS}\n")
         f.write(f"# step_frames: {step_frames}\n")
-        f.write(f"# pyr_scale: {PYR_SCALE}\n")
-        f.write(f"# levels: {LEVELS}\n")
-        f.write(f"# winsize: {WINSIZE}\n")
-        f.write(f"# iterations: {ITERATIONS}\n")
-        f.write(f"# poly_n: {POLY_N}\n")
-        f.write(f"# poly_sigma: {POLY_SIGMA}\n")
-        f.write(f"# gaussian_flag: {USE_GAUSSIAN}\n")
         f.write("# -----------------------------------\n\n")
 
         writer = csv.DictWriter(
@@ -214,8 +185,7 @@ def main():
                 "mean_u",
                 "mean_v",
                 "mean_mag_px_per_sec",
-                # "mean_mag_deg_per_sec",
-            ]
+            ],
         )
         writer.writeheader()
 
@@ -223,17 +193,17 @@ def main():
         last_print_pct = -1
 
         while True:
+
             for _ in range(step_frames):
                 ok = cap.grab()
                 frame_idx += 1
                 if not ok:
                     break
 
-            # Progress (percent of original frames)
             if total_frames > 0:
                 pct = int((frame_idx / total_frames) * 100)
-                if pct != last_print_pct and (pct % 5 == 0):  # prints at 0,5,10,...,100
-                    print(f"Progress: {pct}% ({frame_idx}/{total_frames} frames)")
+                if pct != last_print_pct and pct % 5 == 0:
+                    print(f"{video_name}: {pct}%")
                     last_print_pct = pct
 
             ok, frame = cap.retrieve()
@@ -255,16 +225,16 @@ def main():
                 FLAGS
             )
 
+            if viz_writer:
+                viz_writer.write(flow_to_bgr(flow))
+
             stats = flow_stats(flow)
 
             dt = frame_idx - prev_frame_idx
+            if dt == 0:
+                dt = 1
 
-            # ---- Convert to pixels/sec ----
             mean_px_per_sec = (stats["mean_mag"] / dt) * native_fps
-
-            # ---- Convert to degrees/sec ----
-            # deg_per_pixel = HORIZONTAL_FOV_DEG / resized_width
-            # mean_deg_per_sec = mean_px_per_sec * deg_per_pixel
 
             writer.writerow({
                 "time_sec": frame_idx / native_fps,
@@ -277,28 +247,39 @@ def main():
                 "max_mag": stats["max_mag"],
                 "mean_u": stats["mean_u"],
                 "mean_v": stats["mean_v"],
-                "mean_mag_px_per_sec": mean_px_per_sec,
-                # "mean_mag_deg_per_sec": mean_deg_per_sec,
+                "mean_mag_px_per_sec": mean_px_per_sec
             })
-
-            if viz_writer:
-                viz_writer.write(flow_to_bgr(flow))
 
             prev_gray = gray
             prev_frame_idx = frame_idx
 
     cap.release()
+
     if viz_writer:
         viz_writer.release()
 
-    print("Done.")
-    print(f"Wrote: {OUTPUT_CSV}")
-    if OUTPUT_VIZ:
-        print(f"Wrote: {OUTPUT_VIZ}")
+    print("Finished:", video_name)
+
+
+# -----------------------
+# BULK PROCESS ALL VIDEOS
+# -----------------------
+
+def bulk_main():
+
+    video_files = sorted([
+        f for f in os.listdir(VIDEO_FOLDER)
+        if f.lower().endswith(VIDEO_EXTENSIONS)
+    ])
+
+    print("Found", len(video_files), "videos")
+
+    for video in video_files:
+
+        video_path = os.path.join(VIDEO_FOLDER, video)
+
+        process_video(video_path)
+
 
 if __name__ == "__main__":
-    if RUN_SELF_TEST:
-        run_self_test()
-    else:
-        main()
-
+    bulk_main()

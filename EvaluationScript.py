@@ -6,7 +6,7 @@ import seaborn as sns
 from scipy.stats import ttest_ind
 
 INPUT_FOLDER = "Output/Chair_timeseries"
-SUMMARY_OUTPUT = "Output/optic_flow_summary.csv"
+SUMMARY_OUTPUT = "Output/full_optic_flow_summary.csv"
 
 all_trials = []
 summary_rows = []
@@ -146,7 +146,7 @@ plt.show()
 # Statistical Test: t-test
 # -----------------------------
 # Load the summary table
-summary_df = pd.read_csv("Output/optic_flow_summary.csv")
+summary_df = pd.read_csv("Output/full_optic_flow_summary.csv")
 
 # Split conditions
 center = summary_df[summary_df["condition"] == "Center"]["mean_flow"]
